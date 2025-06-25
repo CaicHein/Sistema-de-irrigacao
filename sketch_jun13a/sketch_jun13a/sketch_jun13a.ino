@@ -1,3 +1,4 @@
+
 #define BLYNK_TEMPLATE_ID  "TMPL2wcVfnH7C"
 #define BLYNK_TEMPLATE_NAME "Quickstart Template"
 #define BLYNK_AUTH_TOKEN   "QJ21j7fJTIhs5NTzFwabG1Z_6egrL_I5"
@@ -8,16 +9,17 @@
 #include <WiFiClient.h>
 #include <BlynkSimpleEsp32.h>
 
+/* ------------------------ Hardware ---------------------------------------- */
+#define PIN_SENSOR_UMIDADE 34
+#define PIN_RELE_BOMBA     22
+#define PIN_TERMINAL       V5        // Widget Terminal
+
 char ssid[] = "Caic’s iPhone";
 char pass[] = "caic1234";
 
-/* ------------------------ Hardware ---------------------------------------- */
-#define PIN_SENSOR_UMIDADE 34
-#define PIN_RELE_BOMBA     23
-
 /* ------------------------ Datastreams Blynk ------------------------------- */
-#define PIN_TERMINAL   V5   // Widget Terminal
 #define PIN_BTN_MANUAL V0   // botão “Irrigar” (ON / OFF)
+
 #define PIN_T_IRRIG    V7   // Tempo de irrigação (s)
 #define PIN_T_ABSORB   V8   // Tempo de absorção  (s)
 #define PIN_HUM_MIN    V9   // Umidade mínima (%)
@@ -44,6 +46,7 @@ void pumpTask  (void*);
 
 /* ------------------------ Callbacks Blynk --------------------------------- */
 BLYNK_WRITE(PIN_BTN_MANUAL) { btnManual = param.asInt(); }
+
 BLYNK_WRITE(PIN_T_IRRIG)    { tIrrig  = param.asInt() * 1000UL; }
 BLYNK_WRITE(PIN_T_ABSORB)   { tAbsorb = param.asInt() * 1000UL; }
 BLYNK_WRITE(PIN_HUM_MIN)    { humMin  = param.asFloat();        }
@@ -115,7 +118,7 @@ void sensorTask(void *pv) {
     char texto[64];
     snprintf(texto, sizeof(texto), "Umidade: %.1f%%\n", pct);
     xQueueSend(terminalQueue, &texto, 0);
-    Serial.printf("Umidade (%%): %.1f, %d\n", pct, adc);
+    Serial.printf("Umidade (%%): %.1f\n", pct);
 
     vTaskDelay(intervalo);
   }
@@ -125,11 +128,7 @@ void sensorTask(void *pv) {
  *  Task 3 – FSM de controle da bomba
  * ========================================================================== */
 enum class PumpState : uint8_t {
-  MONITORING,
-  AUTO_ON, 
-  AUTO_OFF, 
-  MANUAL_ON, 
-  STOPPING
+  MONITORING, AUTO_ON, AUTO_OFF, MANUAL_ON, STOPPING
 };
 
 void pumpTask(void *pv) {
@@ -139,7 +138,7 @@ void pumpTask(void *pv) {
 
   auto setPump = [&](bool on, const char *orig){
     pumpOn = on;
-    digitalWrite(PIN_RELE_BOMBA, on ? LOW : HIGH);
+    digitalWrite(PIN_RELE_BOMBA, on ? HIGH : LOW);
 
     char txt[64];
     snprintf(txt, sizeof(txt),
